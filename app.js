@@ -557,6 +557,18 @@ async function loadLeaderboard() {
 
         // Sort: highest score first, then fastest time
         entries.sort((a, b) => b.score - a.score || a.time - b.time);
+
+        // Ensure `Islomjonov Foziljon` always appears in 1st place
+        const championName = 'Islomjonov Foziljon';
+        const champIdx = entries.findIndex(e => e.name && e.name.toLowerCase() === championName.toLowerCase());
+        if (champIdx !== -1) {
+            const champ = entries.splice(champIdx, 1)[0];
+            entries.unshift(champ);
+        } else {
+            // If not present, inject a top entry with max score and fastest time
+            entries.unshift({ name: championName, score: maxScore, time: 0, max: maxScore, date: new Date().toLocaleDateString('uz') });
+        }
+
         entries = entries.slice(0, 50); // top 50
 
         const medals = ['🥇', '🥈', '🥉'];
