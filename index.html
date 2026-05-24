@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Pedagogika va Psixologiya fanidan interaktiv test platformasi. O'z bilimingizni sinab ko'ring va reytingda yetakchi bo'ling.">
+    <title>Pedagogika va Psixologiya — Test Platformasi</title>
+    <!-- Google Fonts: IBM Plex Sans & Mono, Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Animated Blobs -->
+    <div class="background-decorations">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- ── LOGIN SCREEN ── -->
+    <div id="login-screen">
+        <div class="login-box">
+            <div class="logo-icon-large">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <h1>Pedagogika va Psixologiya</h1>
+            <p>Bilimingizni sinash uchun ismingizni kiriting va testni boshlang</p>
+            
+            <div class="input-container">
+                <input class="login-input" id="login-name" type="text" placeholder="Ism Familiya" maxlength="40" autocomplete="off" />
+                <span class="focus-border"></span>
+            </div>
+            
+            <button class="login-btn" id="login-btn" onclick="startTest()">
+                <span>Testni Boshlash</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <div class="login-error" id="login-error">
+                <i class="fa-solid fa-circle-exclamation"></i> Iltimos, ismingizni kiriting!
+            </div>
+        </div>
+    </div>
+
+    <!-- ── APP LAYOUT ── -->
+    <div id="app-layout" class="hide">
+        <!-- SIDEBAR -->
+        <aside id="sidebar">
+            <div class="sidebar-logo">
+                <i class="fa-solid fa-brain"></i> <span>PedPsix Test</span>
+            </div>
+            
+            <div class="section-label">Test Bo'limlari</div>
+            <nav id="section-nav" role="navigation">
+                <!-- Sections dynamically loaded here -->
+            </nav>
+            
+            <button id="btn-leaderboard-sidebar" onclick="showLeaderboard()">
+                <i class="fa-solid fa-trophy"></i> <span>Reyting</span>
+            </button>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main id="main">
+            <!-- TOP BAR -->
+            <header id="topbar">
+                <span class="topbar-title" id="topbar-title">Bo'lim 1</span>
+                <span class="topbar-sep">|</span>
+                <div id="q-nav" aria-label="Savollar ro'yxati">
+                    <!-- Navigation dots dynamically loaded -->
+                </div>
+            </header>
+
+            <!-- CONTENT BOX -->
+            <div id="content">
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+
+                <!-- ── QUESTION CARD ── -->
+                <article class="q-card" id="q-card">
+                    <div class="q-header">
+                        <div class="q-number" id="q-num">1</div>
+                        <div class="q-meta">
+                            <div class="q-difficulty" id="q-diff">Qiyinlik darajasi: 2</div>
+                            <h2 class="q-text" id="q-text">Savol matni shu yerda paydo bo'ladi?</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="q-options" id="q-options">
+                        <!-- Options dynamically loaded -->
+                    </div>
+                    
+                    <div class="q-actions">
+                        <button class="btn-check" id="btn-check" onclick="checkAnswer()" disabled>
+                            <i class="fa-solid fa-circle-check"></i> Tekshirish
+                        </button>
+                        <button class="btn-next" id="btn-next" onclick="nextQuestion()" style="display:none">
+                            Keyingi <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                        <span class="feedback-msg" id="feedback" style="display:none"></span>
+                    </div>
+                </article>
+
+                <!-- ── SECTION RESULT PANEL ── -->
+                <section id="result-panel" class="result-panel" style="display: none;">
+                    <div class="result-circle">
+                        <div class="big" id="res-score">0</div>
+                        <div class="small" id="res-total-q">/ 25</div>
+                    </div>
+                    <h2 class="result-title" id="res-title">Bo'lim yakunlandi!</h2>
+                    <p class="result-sub" id="res-sub">Natijangiz yaxshi, bilimingizni oshirishda davom eting.</p>
+                    
+                    <div class="result-stats">
+                        <div class="stat-box c">
+                            <div class="val" id="res-correct">0</div>
+                            <div class="lbl">To'g'ri</div>
+                        </div>
+                        <div class="stat-box w">
+                            <div class="val" id="res-wrong">0</div>
+                            <div class="lbl">Noto'g'ri</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="val" id="res-pct">0%</div>
+                            <div class="lbl">Foiz</div>
+                        </div>
+                    </div>
+                    
+                    <div class="result-buttons">
+                        <button class="btn-retry" onclick="retrySection()">
+                            <i class="fa-solid fa-rotate-left"></i> Qayta ishlash
+                        </button>
+                        <button class="btn-restart" id="btn-next-section">
+                            Keyingi bo'lim <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ── TOTAL RESULT PANEL ── -->
+                <section id="total-result" class="total-result" style="display: none;">
+                    <div class="total-result-header">
+                        <h2><i class="fa-solid fa-circle-check"></i> Barcha testlar yakunlandi!</h2>
+                        <p>Pedagogika va Psixologiya kursi bo'yicha umumiy natijangiz</p>
+                    </div>
+                    
+                    <div class="total-score-ring">
+                        <div class="big" id="total-score">0</div>
+                        <div class="small" id="total-max-score">/ 188</div>
+                    </div>
+                    
+                    <div class="total-grid" id="total-grid">
+                        <!-- Dynamically filled with section cards -->
+                    </div>
+                    
+                    <div class="total-buttons">
+                        <button class="btn-restart-all" onclick="restartAll()">
+                            <i class="fa-solid fa-arrows-rotate"></i> Qaytadan boshlash
+                        </button>
+                        <button class="btn-view-lb" onclick="showLeaderboard()">
+                            <i class="fa-solid fa-trophy"></i> Reytingni ko'rish
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ── LEADERBOARD PANEL ── -->
+                <section id="leaderboard-panel" class="leaderboard-panel" style="display: none;">
+                    <h2><i class="fa-solid fa-ranking-star"></i> Online Reyting</h2>
+                    <p class="lb-sub">Bo'limlar yoki umumiy natijalar bo'yicha reytingni tanlang</p>
+                    
+                    <div id="lb-tabs" class="lb-tabs">
+                        <!-- Dynamic tabs for Umumiy + Sections -->
+                    </div>
+                    
+                    <div id="lb-list" class="lb-list">
+                        <div class="lb-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> Yuklanmoqda...</div>
+                    </div>
+                    
+                    <div class="lb-buttons">
+                        <button class="btn-lb" onclick="closeLeaderboard()">
+                            <i class="fa-solid fa-arrow-left"></i> Orqaga
+                        </button>
+                        <button class="btn-lb primary" onclick="loadLeaderboard()">
+                            <i class="fa-solid fa-rotate"></i> Yangilash
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Data & Script -->
+    <script src="questions.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
