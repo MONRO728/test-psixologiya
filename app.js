@@ -4,6 +4,7 @@ const SECTION_SIZE = 25;
 
 let sectionData = []; // Array of { qs: [...], results: [...] }
 let sectionScores = Array(NUM_SECTIONS).fill(null);
+let takrorlashScore = null;
 
 let currentSection = 0;
 let currentQ = 0;
@@ -54,6 +55,30 @@ function initSectionData() {
             results: []
         });
     }
+    initTakrorlashData();
+}
+
+// Initialize "Takrorlash" section with 25 random questions from the entire database
+function initTakrorlashData() {
+    const shuffledAll = shuffle(ALL_QUESTIONS);
+    const selectedQs = shuffledAll.slice(0, SECTION_SIZE);
+    
+    const mappedQs = selectedQs.map(q => {
+        const correctText = q.opts[0];
+        const shuffledOpts = shuffle(q.opts);
+        const correctIdx = shuffledOpts.indexOf(correctText);
+        return {
+            q: q.q,
+            d: q.d || 2,
+            shuffledOpts: shuffledOpts,
+            correctIdx: correctIdx
+        };
+    });
+    
+    sectionData['takrorlash'] = {
+        qs: mappedQs,
+        results: []
+    };
 }
 
 // Start the Test after name entry
@@ -110,6 +135,26 @@ function buildSidebar() {
         btn.onclick = () => goSection(i);
         nav.appendChild(btn);
     }
+
+    // Append special "Takrorlash" button
+    const tkBtn = document.createElement('button');
+    tkBtn.className = 'section-btn special-btn';
+    if (currentSection === 'takrorlash') tkBtn.classList.add('active');
+    
+    const results = sectionData['takrorlash']?.results || [];
+    const qsCount = sectionData['takrorlash']?.qs.length || 0;
+    const answeredCount = results.filter(r => r !== undefined).length;
+    
+    if (answeredCount === qsCount && qsCount > 0) {
+        tkBtn.classList.add('done');
+    } else if (answeredCount > 0) {
+        tkBtn.classList.add('in-progress');
+    }
+    
+    const tkScoreStr = takrorlashScore !== null ? `<span class="score-badge">${takrorlashScore}/${qsCount}</span>` : '';
+    tkBtn.innerHTML = `<span class="num"><i class="fa-solid fa-arrows-rotate"></i></span><span>Takrorlash</span> ${tkScoreStr}`;
+    tkBtn.onclick = () => goSection('takrorlash');
+    nav.appendChild(tkBtn);
 }
 
 // Navigate to a specific section
@@ -173,7 +218,10 @@ function renderQuestion() {
     const res = sectionData[currentSection].results;
     const sectionQsCount = sectionData[currentSection].qs.length;
 
-    document.getElementById('topbar-title').textContent = `${currentSection + 1}-Bo'lim — Savol ${currentQ + 1} / ${sectionQsCount}`;
+    const titleText = currentSection === 'takrorlash'
+        ? `Takrorlash Bo'limi — Savol ${currentQ + 1} / ${sectionQsCount}`
+        : `${currentSection + 1}-Bo'lim — Savol ${currentQ + 1} / ${sectionQsCount}`;
+    document.getElementById('topbar-title').textContent = titleText;
     document.getElementById('q-num').textContent = currentQ + 1;
     document.getElementById('q-diff').textContent = `Qiyinlik darajasi: ${q.d}`;
     document.getElementById('q-text').textContent = q.q;
@@ -322,7 +370,11 @@ function showSectionResult() {
     const wrong = sectionQsCount - correct;
     const pct = Math.round(correct / sectionQsCount * 100);
     
-    sectionScores[currentSection] = correct;
+    if (currentSection === 'takrorlash') {
+        takrorlashScore = correct;
+    } else {
+        sectionScores[currentSection] = correct;
+    }
 
     document.getElementById('q-card').style.display = 'none';
     document.getElementById('result-panel').style.display = 'block';
@@ -352,7 +404,13 @@ function showSectionResult() {
     const allDone = sectionScores.every(s => s !== null);
     const nextBtn = document.getElementById('btn-next-section');
     
-    if (allDone) {
+    if (currentSection === 'takrorlash') {
+        nextBtn.innerHTML = 'Yangi savollar <i class="fa-solid fa-arrows-rotate"></i>';
+        nextBtn.onclick = () => {
+            initTakrorlashData();
+            goSection('takrorlash');
+        };
+    } else if (allDone) {
         nextBtn.innerHTML = 'Umumiy natijalar <i class="fa-solid fa-square-poll-vertical"></i>';
         nextBtn.onclick = showTotalResult;
     } else if (currentSection + 1 < NUM_SECTIONS) {
@@ -366,9 +424,7 @@ function showSectionResult() {
     // Save score to online leaderboard database
     if (userName && testStartTime) {
         const elapsed = Math.round((Date.now() - testStartTime) / 1000);
-        const currentTotal = sectionScores.reduce((a, b) => a + (b || 0), 0);
-        const maxTotalQuestions = ALL_QUESTIONS.length;
-        saveScore(userName, currentTotal, elapsed, currentSection, correct);
+        saveScore(userName, null, elapsed, currentSection, correct);
     }
 
     buildSidebar();
@@ -407,6 +463,22 @@ function showTotalResult() {
 
 // Reset current section to try again
 function retrySection() {
+    if (currentSection === 'takrorlash') {
+        initTakrorlashData();
+        takrorlashScore = null;
+        currentQ = 0;
+        selectedOpt = null;
+        checked = false;
+        
+        document.getElementById('result-panel').style.display = 'none';
+        document.getElementById('total-result').style.display = 'none';
+        document.getElementById('q-card').style.display = 'block';
+        
+        buildSidebar();
+        renderQuestion();
+        return;
+    }
+
     sectionScores[currentSection] = null;
     
     // Re-slice and shuffle options
@@ -450,6 +522,7 @@ function restartAll() {
     selectedOpt = null;
     checked = false;
     sectionScores = Array(NUM_SECTIONS).fill(null);
+    takrorlashScore = null;
     
     initSectionData();
     
@@ -507,6 +580,11 @@ async function upsertEntry(path, name, score, timeSec, maxScore) {
 // Save score to general and section leaderboards
 async function saveScore(name, score, timeSec, sectionIdx, sectionScore) {
     try {
+        if (sectionIdx === 'takrorlash') {
+            await upsertEntry(`/pedpsix_test_takrorlash`, name, sectionScore, timeSec, SECTION_SIZE);
+            return;
+        }
+
         // 1. General leaderboard (isolated with pedpsix_ path)
         await upsertEntry(`/pedpsix_umumiy`, name, score, timeSec, ALL_QUESTIONS.length);
 
@@ -536,14 +614,18 @@ async function loadLeaderboard() {
     const list = document.getElementById('lb-list');
     list.innerHTML = '<div class="lb-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> Yuklanmoqda...</div>';
 
-    const path = currentTab === 'umumiy' ? '/pedpsix_umumiy' : `/pedpsix_test${currentTab}`;
+    const path = currentTab === 'umumiy' ? '/pedpsix_umumiy' : 
+                 (currentTab === 'takrorlash' ? '/pedpsix_test_takrorlash' : `/pedpsix_test${currentTab}`);
     
     let maxScore = ALL_QUESTIONS.length;
-    if (currentTab !== 'umumiy') {
+    if (currentTab === 'takrorlash') {
+        maxScore = SECTION_SIZE;
+    } else if (currentTab !== 'umumiy') {
         maxScore = sectionData[currentTab]?.qs.length || SECTION_SIZE;
     }
     
-    const tabLabel = currentTab === 'umumiy' ? 'Umumiy' : `${currentTab + 1}-Bo'lim`;
+    const tabLabel = currentTab === 'umumiy' ? 'Umumiy' : 
+                     (currentTab === 'takrorlash' ? 'Takrorlash' : `${currentTab + 1}-Bo'lim`);
 
     try {
         const res = await fetch(`${FB_URL}${path}.json`);
@@ -620,6 +702,13 @@ function showLeaderboard() {
         tab.onclick = () => switchTab(i);
         tabsContainer.appendChild(tab);
     }
+
+    // Add "Takrorlash" tab
+    const tkTab = document.createElement('button');
+    tkTab.className = 'lb-tab' + (currentTab === 'takrorlash' ? ' active' : '');
+    tkTab.textContent = 'Takrorlash';
+    tkTab.onclick = () => switchTab('takrorlash');
+    tabsContainer.appendChild(tkTab);
     
     loadLeaderboard();
 }
